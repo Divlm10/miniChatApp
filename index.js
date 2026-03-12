@@ -27,6 +27,10 @@ io.on("connection",(socket)=>{
         io.emit("message",data);//broadcast if any message from any user
     });
 
+    socket.on("typing",(username)=>{
+        socket.broadcast.emit("typing",username);//broadcast typing mssg to everyone EXCEPT sender
+    });
+
     socket.on("disconnect",()=>{ //on refreshing,leaving,crash
         if(socket.username){
             //username exists not undefined
@@ -41,7 +45,7 @@ io.on("connection",(socket)=>{
 app.use(express.static(path.resolve("./public")));//serve everything inside public folder
 
 app.get('/',(req,res)=>{
-    return res.sendFile("./public/index.html");
+    return res.sendFile(path.resolve("./public/index.html"));
 })
 
 server.listen(9000,()=>console.log(`Server started`));

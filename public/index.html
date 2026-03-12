@@ -15,6 +15,7 @@
     <button id="sendBtn">SEND</button>
 
     <div id="messages"></div>
+    <p id="typing"></p>
 
     <script src="/socket.io/socket.io.js"></script> 
     <script>
@@ -31,13 +32,23 @@
         // const usernameInput=document.getElementById("username");
 
         const allMessages = document.getElementById("messages");
+        const typingIndicator=document.getElementById("typing");
         //listen for mssags from server
         // socket.on("message",message=>console.log(message));//console any message from server
 
         socket.on("message",(data)=>{ //broadcasting
             const p=document.createElement("p");
-            p.innerText = `${data.username}: ${data.message}`;
+            p.innerText = `${data.username}: ${data.message}`; //extract username and messsage from data sent by server
             allMessages.appendChild(p);
+        });
+
+        socket.on("typing",(username)=>{
+            // console.log("typing received from",username);
+            typingIndicator.innerText = `${username} is typing...`;
+
+            // setTimeout(()=>{
+            //     typingIndicator.innerText="";
+            // },1000);
         });
 
         sendBtn.addEventListener("click",()=>{
@@ -52,7 +63,15 @@
                 message
             });
             messageInput.value="";
-        })
+            typingIndicator.innerText="";//clear when messsage sent
+        });
+
+        messageInput.addEventListener("input",()=>{ //send typing event
+            // console.log("typing event sent");
+            socket.emit("typing",username);
+            
+        });
+
     </script>
 </body>
 </html>
