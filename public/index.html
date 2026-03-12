@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Chatting</h1>
-    <input type="text" id="username" placeholder="Enter username"/>
+    <!-- <input type="text" id="username" placeholder="Enter username"/> -->
     <br><br>
 
     <!-- <button onclick="createConnection()">Create WS Connection</button> -->
@@ -23,15 +23,18 @@
         // }
         const socket=io(); //connect browser to server
 
+        const username=prompt("Enter your username");
+        socket.emit("user-joined",username);//send user-joined event to server
+
         const sendBtn=document.getElementById("sendBtn");
         const messageInput=document.getElementById("message");
-        const usernameInput=document.getElementById("username");
+        // const usernameInput=document.getElementById("username");
 
         const allMessages = document.getElementById("messages");
         //listen for mssags from server
         // socket.on("message",message=>console.log(message));//console any message from server
 
-        socket.on("message",(data)=>{
+        socket.on("message",(data)=>{ //broadcasting
             const p=document.createElement("p");
             p.innerText = `${data.username}: ${data.message}`;
             allMessages.appendChild(p);
@@ -40,8 +43,8 @@
         sendBtn.addEventListener("click",()=>{
             const message=messageInput.value;
             console.log(message);
-            const username=usernameInput.value;
-            console.log(username);
+            // const username=usernameInput.value;
+            // console.log(username);
 
             // socket.emit("user-message",message);  
             socket.emit("user-message",{
