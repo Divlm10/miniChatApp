@@ -15,3 +15,9 @@ A real-time chat application built with:
 ## Run Locally
 
 Install dependencies
+npm install
+
+Run server
+node index.js
+
+Open browser

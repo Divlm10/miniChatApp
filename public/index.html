@@ -7,33 +7,48 @@
 </head>
 <body>
     <h1>Chatting</h1>
+    <input type="text" id="username" placeholder="Enter username"/>
+    <br><br>
+
     <!-- <button onclick="createConnection()">Create WS Connection</button> -->
      <input type="text" id="message" placeholder="Enter message"/>
     <button id="sendBtn">SEND</button>
 
     <div id="messages"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="/socket.io/socket.io.js"></script> 
     <script>
         // function createConnection(){
         //     const socket=io();
         // }
-        const socket=io();
+        const socket=io(); //connect browser to server
+
         const sendBtn=document.getElementById("sendBtn");
         const messageInput=document.getElementById("message");
-        const allMessages = document.getElementById("messages");
+        const usernameInput=document.getElementById("username");
 
-        socket.on("message",message=>console.log(message));//console any message from server
-        socket.on("message",(message)=>{
-            const p=document.createElement('p');
-            p.innerText=message;
+        const allMessages = document.getElementById("messages");
+        //listen for mssags from server
+        // socket.on("message",message=>console.log(message));//console any message from server
+
+        socket.on("message",(data)=>{
+            const p=document.createElement("p");
+            p.innerText = `${data.username}: ${data.message}`;
             allMessages.appendChild(p);
         });
 
-        sendBtn.addEventListener("click",(e)=>{
+        sendBtn.addEventListener("click",()=>{
             const message=messageInput.value;
             console.log(message);
-            socket.emit("user-message",message);  
+            const username=usernameInput.value;
+            console.log(username);
+
+            // socket.emit("user-message",message);  
+            socket.emit("user-message",{
+                username,
+                message
+            });
+            messageInput.value="";
         })
     </script>
 </body>
