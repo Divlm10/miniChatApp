@@ -9,6 +9,14 @@ const server=http.createServer(app);//need to attach socket io with app over ser
 
 const roomUsers={};//store users in rooms
 
+function getTime(){
+    return new Date().toLocaleTimeString([],{
+        hour:"2-digit",
+        minute:"2-digit"
+    });
+}
+
+
 const io=new Server(server);//attach socket.io to the http server
 //listening for client connections 
 io.on("connection",(socket)=>{
@@ -38,9 +46,12 @@ io.on("connection",(socket)=>{
 
         roomUsers[room].push(username);//insert current user into this room list
 
+        const time=getTime();
+
         io.to(room).emit("message",{   //io.to(room).emit() =>Message goes to only that room
             username:"System",
-            message:`${username} joined ${room}`
+            message:`${username} joined ${room}`,
+            time
         });
 
         io.to(room).emit("room-users",roomUsers[room]);//broadcast list of active users in a room to the room members
@@ -49,7 +60,16 @@ io.on("connection",(socket)=>{
     //MESSAGE
     socket.on("user-message",(data)=>{//listen for event(user-message) from client=>socket.emit("user-message",message);
         // console.log("A new user Message",message);   
-        io.to(socket.room).emit("message",data);//broadcast if any message from any user
+        //Timestamp
+        // const time=new Date().toLocaleTimeString([],{
+        //     hour:"2-digit",
+        //     minute:"2-digit"
+        // });
+
+        io.to(socket.room).emit("message",{
+            ...data,
+            time:getTime()
+        });//broadcast if any message from any user
     });
     //TYPING
     socket.on("typing",(username)=>{
@@ -71,9 +91,12 @@ io.on("connection",(socket)=>{
 
             roomUsers[room]=roomUsers[room].filter(user=>user!==username);//erase current user->filtering users!=username
 
+            const time=getTime();
+
             io.to(room).emit("message",{
                 username:"System",
-                message:`${username} left ${room}`
+                message:`${username} left ${room}`,
+                time
             });
             
             io.to(room).emit("room-users",roomUsers[room]);//show remaining active members in room

@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat App</title>
+    <style>
+    #chat-container{
+        height:300px;
+        width:400px;
+        border:1px solid black;
+        overflow-y:auto;
+        padding:10px;
+    }
+    </style>
 </head>
 <body>
     <h1>Chatting</h1>
@@ -11,11 +20,13 @@
     <br><br>
 
     <!-- <button onclick="createConnection()">Create WS Connection</button> -->
-    <input type="text" id="room" placeholder="Enter Room Name"/>
+    <!-- <input type="text" id="room" placeholder="Enter Room Name"/> -->
      <input type="text" id="message" placeholder="Enter message"/>
     <button id="sendBtn">SEND</button>
 
-    <div id="messages"></div>
+    <div id="chat-container">
+        <div id="messages"></div>
+    </div>
     
     <h3>Users in Room</h3>
     <ul id="users"></ul>
@@ -61,8 +72,10 @@
 
         socket.on("message",(data)=>{ //broadcasting
             const p=document.createElement("p");
-            p.innerText = `${data.username}: ${data.message}`; //extract username and messsage from data sent by server and attach
+            p.innerText = `${data.username} [${data.time}]: ${data.message}`; //extract username ,time and messsage from data sent by server and attach
             allMessages.appendChild(p);//add to the message
+
+            autoScroll();
         });
 
         socket.on("typing",(username)=>{
@@ -107,6 +120,12 @@
             },3000);//stop when user doesnt type for 3 seconds
             
         });
+
+        function autoScroll(){
+            const chatContainer=document.getElementById("chat-container");
+            // scrollTop → current scroll position
+            chatContainer.scrollTop=chatContainer.scrollHeight;//move the scroll to the maximum height.
+        }
 
     </script>
 </body>
