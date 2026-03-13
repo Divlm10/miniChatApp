@@ -7,6 +7,8 @@ const {Server}=require("socket.io");//install Server
 const app=express();
 const server=http.createServer(app);//need to attach socket io with app over server(not directly)
 
+const roomUsers={};//store users in rooms
+
 const io=new Server(server);//attach socket.io to the http server
 //listening for client connections 
 io.on("connection",(socket)=>{
@@ -29,37 +31,52 @@ io.on("connection",(socket)=>{
 
         socket.join(room);
 
+        if(!roomUsers[room]){
+            //no users in this room
+            roomUsers[room]=[];
+        }
+
+        roomUsers[room].push(username);//insert current user into this room list
+
         io.to(room).emit("message",{   //io.to(room).emit() =>Message goes to only that room
             username:"System",
             message:`${username} joined ${room}`
         });
+
+        io.to(room).emit("room-users",roomUsers[room]);//broadcast list of active users in a room to the room members
     });
 
-
+    //MESSAGE
     socket.on("user-message",(data)=>{//listen for event(user-message) from client=>socket.emit("user-message",message);
         // console.log("A new user Message",message);   
         io.to(socket.room).emit("message",data);//broadcast if any message from any user
     });
-
+    //TYPING
     socket.on("typing",(username)=>{
         socket.broadcast.to(socket.room).emit("typing",username);//broadcast typing mssg to everyone EXCEPT sender
     });
 
     socket.on("stop-typing",(username)=>{
         socket.broadcast.to(socket.room).emit("stop-typing",username);
-    })
-
+    });
+    //DISCONNECTION
     socket.on("disconnect",()=>{ //on refreshing,leaving,crash
-        if(socket.username && socket.room){
+        const {username,room}=socket;//extract from socker
+        if(username && room){
             //username exists not undefined && room also exists
             // io.emit("message",{
             //     username:"System",
             //     message:`${socket.username} left the chat`
             // });
-            io.to(socket.room).emit("message",{
+
+            roomUsers[room]=roomUsers[room].filter(user=>user!==username);//erase current user->filtering users!=username
+
+            io.to(room).emit("message",{
                 username:"System",
-                message:`${socket.username} left ${socket.room}`
+                message:`${username} left ${room}`
             });
+            
+            io.to(room).emit("room-users",roomUsers[room]);//show remaining active members in room
         }
     });
 });

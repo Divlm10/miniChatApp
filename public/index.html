@@ -16,6 +16,10 @@
     <button id="sendBtn">SEND</button>
 
     <div id="messages"></div>
+    
+    <h3>Users in Room</h3>
+    <ul id="users"></ul>
+
     <p id="typing"></p>
 
     <script src="/socket.io/socket.io.js"></script> 
@@ -40,13 +44,25 @@
 
         const allMessages = document.getElementById("messages");
         const typingIndicator=document.getElementById("typing");
+
+        const userList=document.getElementById("users");
         //listen for mssags from server
         // socket.on("message",message=>console.log(message));//console any message from server
 
+        socket.on("room-users",(users)=>{
+            userList.innerHTML="";//clear ->rebuild to send fresh everytime
+            //iterate thru each user in array (roomUsers) sent by server
+            users.forEach(user=>{
+                const li=document.createElement("li");//create new HTML element in memory
+                li.innerText=user;//put username inside the list element
+                userList.appendChild(li);//add to list of users
+            })
+        })
+
         socket.on("message",(data)=>{ //broadcasting
             const p=document.createElement("p");
-            p.innerText = `${data.username}: ${data.message}`; //extract username and messsage from data sent by server
-            allMessages.appendChild(p);
+            p.innerText = `${data.username}: ${data.message}`; //extract username and messsage from data sent by server and attach
+            allMessages.appendChild(p);//add to the message
         });
 
         socket.on("typing",(username)=>{
