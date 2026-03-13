@@ -12,31 +12,53 @@ const io=new Server(server);//attach socket.io to the http server
 io.on("connection",(socket)=>{
     // console.log("New user connected",socket.id);//every socket(client) has an associated id
 
-    socket.on("user-joined",(username)=>{
-        //socket listens for event user-joined sent from client with username
-        socket.username=username;//store username along with default id
-        //broadcast {System:XYZ joiend/left the chat}
-        io.emit("message",{
+    // socket.on("user-joined",(username)=>{
+    //     //socket listens for event user-joined sent from client with username
+    //     socket.username=username;//store username along with default id
+    //     //broadcast {System:XYZ joiend/left the chat}
+    //     io.emit("message",{
+    //         username:"System",
+    //         message:`${username} joined the chat`
+    //     });
+    // });
+    //JOIN ROOMS
+    socket.on("join-room",(data)=>{
+        const {username,room}=data;//extract from data
+        socket.username=username;//save
+        socket.room=room;
+
+        socket.join(room);
+
+        io.to(room).emit("message",{   //io.to(room).emit() =>Message goes to only that room
             username:"System",
-            message:`${username} joined the chat`
+            message:`${username} joined ${room}`
         });
     });
 
+
     socket.on("user-message",(data)=>{//listen for event(user-message) from client=>socket.emit("user-message",message);
         // console.log("A new user Message",message);   
-        io.emit("message",data);//broadcast if any message from any user
+        io.to(socket.room).emit("message",data);//broadcast if any message from any user
     });
 
     socket.on("typing",(username)=>{
-        socket.broadcast.emit("typing",username);//broadcast typing mssg to everyone EXCEPT sender
+        socket.broadcast.to(socket.room).emit("typing",username);//broadcast typing mssg to everyone EXCEPT sender
     });
 
+    socket.on("stop-typing",(username)=>{
+        socket.broadcast.to(socket.room).emit("stop-typing",username);
+    })
+
     socket.on("disconnect",()=>{ //on refreshing,leaving,crash
-        if(socket.username){
-            //username exists not undefined
-            io.emit("message",{
+        if(socket.username && socket.room){
+            //username exists not undefined && room also exists
+            // io.emit("message",{
+            //     username:"System",
+            //     message:`${socket.username} left the chat`
+            // });
+            io.to(socket.room).emit("message",{
                 username:"System",
-                message:`${socket.username} left the chat`
+                message:`${socket.username} left ${socket.room}`
             });
         }
     });

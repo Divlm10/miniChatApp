@@ -11,6 +11,7 @@
     <br><br>
 
     <!-- <button onclick="createConnection()">Create WS Connection</button> -->
+    <input type="text" id="room" placeholder="Enter Room Name"/>
      <input type="text" id="message" placeholder="Enter message"/>
     <button id="sendBtn">SEND</button>
 
@@ -25,7 +26,13 @@
         const socket=io(); //connect browser to server
 
         const username=prompt("Enter your username");
-        socket.emit("user-joined",username);//send user-joined event to server
+        // socket.emit("user-joined",username);//send user-joined event to server
+        const room=prompt("Enter Room");
+        //send join-room event to server with username and room
+        socket.emit("join-room",{
+            username,
+            room
+        });
 
         const sendBtn=document.getElementById("sendBtn");
         const messageInput=document.getElementById("message");
@@ -51,6 +58,10 @@
             // },1000);
         });
 
+        socket.on("stop-typing",(username)=>{
+            typingIndicator.innerText="";
+        });
+
         sendBtn.addEventListener("click",()=>{
             const message=messageInput.value;
             console.log(message);
@@ -63,12 +74,21 @@
                 message
             });
             messageInput.value="";
-            typingIndicator.innerText="";//clear when messsage sent
+            // typingIndicator.innerText="";//clear when messsage sent
+            socket.emit("stop-typing",username);
         });
+
+        let typingTimeout;
 
         messageInput.addEventListener("input",()=>{ //send typing event
             // console.log("typing event sent");
             socket.emit("typing",username);
+
+            clearTimeout(typingTimeout);
+
+            typingTimeout=setTimeout(()=>{
+                socket.emit("stop-typing",username);
+            },3000);//stop when user doesnt type for 3 seconds
             
         });
 
