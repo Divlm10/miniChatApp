@@ -66,6 +66,19 @@ io.on("connection",(socket)=>{
 
         io.to(room).emit("room-users",roomUsers[room]);//broadcast list of active users in a room to the room members
     });
+    //Load older messages
+    socket.on("load-older-messages",async(data)=>{
+        const {room,lastMessageId}=data;
+
+        const result=await pool.query(
+            `SELECT * FROM messages
+            WHERE room=$1 AND id <$2
+            ORDER BY id DESC
+            LIMIT 20`,
+            [room,lastMessageId]
+        );
+        socket.emit("older-messages",result.rows.reverse());
+    });
 
     //MESSAGE
     socket.on("user-message",async (data)=>{//listen for event(user-message) from client=>socket.emit("user-message",message);
@@ -85,16 +98,20 @@ io.on("connection",(socket)=>{
         const {username,message}=data;
         const room=socket.room;
         //persist in DB
-        await pool.query(
-            "INSERT INTO messages(username,message,room,time) VALUES($1,$2,$3,$4)",
+        const result=await pool.query(
+            "INSERT INTO messages(username,message,room,time,status) VALUES($1,$2,$3,$4,'sent') RETURNING *",
             [username,message,room,time]
         );
 
-        io.to(room).emit("message",{
-            username,
-            message,
-            time
-        });
+        const savedMessage=result.rows[0];//get the inserted row 
+        
+        io.to(room).emit("message",savedMessage);//broadcast message with id and status
+
+        // io.to(room).emit("message",{
+        //     username,
+        //     message,
+        //     time
+        // });
     });
 
     //PRIVATE Message(DM)
@@ -118,6 +135,18 @@ io.on("connection",(socket)=>{
                 self:true
             });
         }
+    });
+    //Handle Delivery
+    socket.on("message-delivered",async(messageId)=>{
+        await pool.query(
+            "UPDATE messages SET status='delivered' WHERE id=$1",
+            [messageId]
+        );
+
+        io.emit("message-status-update",{
+            id:messageId,
+            status: "delivered"
+        });
     });
 
     //TYPING

@@ -70,12 +70,45 @@
             })
         })
 
-        socket.on("message",(data)=>{ //broadcasting
-            const p=document.createElement("p");
-            p.innerText = `${data.username} [${data.time}]: ${data.message}`; //extract username ,time and messsage from data sent by server and attach
-            allMessages.appendChild(p);//add to the message
+        socket.on("message",(data)=>{
+
+            const p = document.createElement("p");
+
+            if(data.id){
+                p.dataset.id = data.id;
+            }
+            // SYSTEM MESSAGE
+            if(data.username === "System"){
+                p.innerText = `${data.username} [${data.time}]: ${data.message}`;
+            }
+            // MESSAGE SENT BY CURRENT USER
+            else if(data.username === username){
+                p.innerText = `${data.username} [${data.time}]: ${data.message} ✓`;
+            }
+            // MESSAGE RECEIVED FROM OTHERS
+            else{
+                p.innerText = `${data.username} [${data.time}]: ${data.message}`;
+                if(data.id){
+                    socket.emit("message-delivered", data.id);
+                }
+            }
+
+            allMessages.appendChild(p);
 
             autoScroll();
+        });
+        socket.on("message-status-update",(data)=>{
+            const messages=document.querySelectorAll("#messages p");
+
+            messages.forEach(msg=>{
+                if(msg.dataset.id == data.id){
+
+                    const text = msg.innerText.split("✓")[0].trim();
+
+                    msg.innerText = `${text} ✓✓`;
+                }
+            });
+
         });
 
         socket.on("typing",(username)=>{
@@ -111,11 +144,25 @@
 
             messages.forEach(msg =>{
                 const p=document.createElement("p");
-                p.innerText=`${msg.username} [${msg.time}]: ${msg.message}`;
+                p.dataset.id = msg.id;
+                p.innerText = `${msg.username} [${msg.time}]: ${msg.message}`;
                 allMessages.appendChild(p);
             });
 
             autoScroll();
+        });
+
+        let loadingOlderMessages=false;
+
+        socket.on("older-messages",(messages)=>{
+            messages.forEach(msg =>{
+                const p=document.createElement("p");
+                p.dataset.id = msg.id;
+                p.innerText = `${msg.username} [${msg.time}]: ${msg.message}`;
+
+                allMessages.prepend(p);//because older messages go above.
+            });
+            loadingOlderMessages=false;//reset when received
         });
 
         sendBtn.addEventListener("click",()=>{
@@ -168,8 +215,28 @@
             
         });
 
+        const chatContainer=document.getElementById("chat-container");
+
+        chatContainer.addEventListener("scroll",()=>{
+            //when scrolled all the way to the top->load older messages from db
+            if(chatContainer.scrollTop===0 && !loadingOlderMessages){
+
+                const firstMessage=allMessages.firstChild;
+                if(!firstMessage)return;
+
+                loadingOlderMessages=true;
+
+                const messageId=firstMessage.dataset.id;
+                
+                socket.emit("load-older-messages",{
+                    room,
+                    lastMessageId: messageId
+                });
+            }
+        });
+
         function autoScroll(){
-            const chatContainer=document.getElementById("chat-container");
+            // const chatContainer=document.getElementById("chat-container");
             // scrollTop → current scroll position
             chatContainer.scrollTop=chatContainer.scrollHeight;//move the scroll to the maximum height.
         }
