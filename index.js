@@ -2,6 +2,7 @@ const http=require("http");
 const express=require("express");
 const path=require("path");
 const {Server}=require("socket.io");//install Server
+const pool=require("./db.js");
 
 
 const app=express();
@@ -33,7 +34,7 @@ io.on("connection",(socket)=>{
     //     });
     // });
     //JOIN ROOMS
-    socket.on("join-room",(data)=>{
+    socket.on("join-room",async (data)=>{
         const {username,room}=data;//extract from data
         socket.username=username;//save
         socket.room=room;
@@ -49,6 +50,12 @@ io.on("connection",(socket)=>{
 
         users[username]=socket.id;//map user to socketID
 
+        //LOAD Chat History when user joins room=>latest 50
+        const result=await pool.query(  
+            "SELECT * FROM messages WHERE room=$1 ORDER BY id DESC LIMIT 50",[room]
+        );
+        socket.emit("chat-history",result.rows.reverse());//reverse before sending to see Latest mssgs
+
         const time=getTime();
 
         io.to(room).emit("message",{   //io.to(room).emit() =>Message goes to only that room
@@ -61,7 +68,7 @@ io.on("connection",(socket)=>{
     });
 
     //MESSAGE
-    socket.on("user-message",(data)=>{//listen for event(user-message) from client=>socket.emit("user-message",message);
+    socket.on("user-message",async (data)=>{//listen for event(user-message) from client=>socket.emit("user-message",message);
         // console.log("A new user Message",message);   
         //Timestamp
         // const time=new Date().toLocaleTimeString([],{
@@ -69,10 +76,25 @@ io.on("connection",(socket)=>{
         //     minute:"2-digit"
         // });
 
-        io.to(socket.room).emit("message",{
-            ...data,
-            time:getTime()
-        });//broadcast if any message from any user
+        // io.to(socket.room).emit("message",{
+        //     ...data,
+        //     time:getTime()
+        // });//broadcast if any message from any user
+
+        const time=getTime();
+        const {username,message}=data;
+        const room=socket.room;
+        //persist in DB
+        await pool.query(
+            "INSERT INTO messages(username,message,room,time) VALUES($1,$2,$3,$4)",
+            [username,message,room,time]
+        );
+
+        io.to(room).emit("message",{
+            username,
+            message,
+            time
+        });
     });
 
     //PRIVATE Message(DM)

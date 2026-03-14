@@ -103,7 +103,20 @@
             }
             
             allMessages.appendChild(p);
-        })
+        });
+
+        socket.on("chat-history",(messages)=>{
+
+            allMessages.innerHTML="";//clear previous messages
+
+            messages.forEach(msg =>{
+                const p=document.createElement("p");
+                p.innerText=`${msg.username} [${msg.time}]: ${msg.message}`;
+                allMessages.appendChild(p);
+            });
+
+            autoScroll();
+        });
 
         sendBtn.addEventListener("click",()=>{
             const message=messageInput.value;
