@@ -8,6 +8,7 @@ const app=express();
 const server=http.createServer(app);//need to attach socket io with app over server(not directly)
 
 const roomUsers={};//store users in rooms
+const users={};//to map target users with their socketid(DM)
 
 function getTime(){
     return new Date().toLocaleTimeString([],{
@@ -46,6 +47,8 @@ io.on("connection",(socket)=>{
 
         roomUsers[room].push(username);//insert current user into this room list
 
+        users[username]=socket.id;//map user to socketID
+
         const time=getTime();
 
         io.to(room).emit("message",{   //io.to(room).emit() =>Message goes to only that room
@@ -71,6 +74,30 @@ io.on("connection",(socket)=>{
             time:getTime()
         });//broadcast if any message from any user
     });
+
+    //PRIVATE Message(DM)
+    socket.on("private-message",(data)=>{
+        const {to,message,username}= data;//extract from received data
+        const targetSocketId=users[to];//get corresponding socketid of target receiver
+
+        if(targetSocketId){
+            const time=getTime();
+            //send to target receiver
+            io.to(targetSocketId).emit("private-message",{
+                from: username,
+                message,
+                time
+            });
+            //send back to sender aswell(display)
+            socket.emit("private-message",{ //socket.emit() =>sends the event only to the current socket
+                from:username,
+                message,
+                time,
+                self:true
+            });
+        }
+    });
+
     //TYPING
     socket.on("typing",(username)=>{
         socket.broadcast.to(socket.room).emit("typing",username);//broadcast typing mssg to everyone EXCEPT sender

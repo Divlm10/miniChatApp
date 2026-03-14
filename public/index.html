@@ -91,6 +91,20 @@
             typingIndicator.innerText="";
         });
 
+        //listen for private messages=>{from,message,time}
+        socket.on("private-message",(data)=>{
+            const p=document.createElement("p");
+            // p.innerText=`[DM] ${data.from} [${data.time}]: ${data.message}`; //extract from(username) time and mssg sent from server
+            
+            if(data.self){
+                p.innerText = `[DM → ${data.from}] [${data.time}]: ${data.message}`;
+            }else{
+                p.innerText = `[DM] ${data.from} [${data.time}]: ${data.message}`;
+            }
+            
+            allMessages.appendChild(p);
+        })
+
         sendBtn.addEventListener("click",()=>{
             const message=messageInput.value;
             console.log(message);
@@ -98,10 +112,30 @@
             // console.log(username);
 
             // socket.emit("user-message",message);  
-            socket.emit("user-message",{
-                username,
-                message
-            });
+
+            //DM: @username message
+            if(message.startsWith("@")){
+                const parts=message.split(" ");//break mssg into array of words
+                const to=parts[0].substring(1);//remove @ from parts[0]="@username"=> "username" (send TO this username)
+                const dmMessage=parts.slice(1).join(" ");//returns everything after index 0(after @username). join(" ")=>merge array back into string
+                
+                if(dmMessage.length===0){
+                    alert("Message cannot be Empty");
+                    return;
+                }
+
+                socket.emit("private-message",{
+                    to,
+                    message:dmMessage,  
+                    username
+                });
+            }
+            else{
+                socket.emit("user-message",{
+                    username,
+                    message
+                });
+            }
             messageInput.value="";
             // typingIndicator.innerText="";//clear when messsage sent
             socket.emit("stop-typing",username);
