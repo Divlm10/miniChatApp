@@ -77,19 +77,50 @@
             if(data.id){
                 p.dataset.id = data.id;
             }
+
+            // <p data-id="12">
+                // <span class="meta">user1 [03:42 PM]</span>
+                // <span class="text">hello</span>
+                // <span class="status">✓</span>
+            // </p>
+
+            const meta = document.createElement("span");
+            meta.className = "meta";
+
+            const text = document.createElement("span");
+            text.className = "text";
+
+            const status = document.createElement("span");
+            status.className = "status";
+
+            meta.innerText = `${data.username} [${data.time}]: `;
+            text.innerText = data.message;
+
             // SYSTEM MESSAGE
             if(data.username === "System"){
-                p.innerText = `${data.username} [${data.time}]: ${data.message}`;
+                p.appendChild(meta);
+                p.appendChild(text);
             }
+
             // MESSAGE SENT BY CURRENT USER
             else if(data.username === username){
-                p.innerText = `${data.username} [${data.time}]: ${data.message} ✓`;
+
+                status.innerText = " ✓";
+
+                p.appendChild(meta);
+                p.appendChild(text);
+                p.appendChild(status);
             }
+
             // MESSAGE RECEIVED FROM OTHERS
             else{
-                p.innerText = `${data.username} [${data.time}]: ${data.message}`;
+
+                p.appendChild(meta);
+                p.appendChild(text);
+
                 if(data.id){
                     socket.emit("message-delivered", data.id);
+                    socket.emit("message-read", data.id);
                 }
             }
 
@@ -97,19 +128,59 @@
 
             autoScroll();
         });
+
         socket.on("message-status-update",(data)=>{
-            const messages=document.querySelectorAll("#messages p");
+            const msg = document.querySelector(`[data-id="${data.id}"]`);
 
-            messages.forEach(msg=>{
-                if(msg.dataset.id == data.id){
+            if(!msg) return;
 
-                    const text = msg.innerText.split("✓")[0].trim();
+            const status = msg.querySelector(".status");
 
-                    msg.innerText = `${text} ✓✓`;
-                }
-            });
-
+            if(status){
+                status.innerText = " ✓✓";
+            }
         });
+
+        socket.on("message-read-update",(data)=>{
+            const msg = document.querySelector(`[data-id="${data.id}"]`);
+
+            if(!msg) return;
+
+            const status = msg.querySelector(".status");
+
+            if(status){
+                status.innerText = " ✓✓🔵";
+            }
+        });
+
+        socket.on("message-edited",(data)=>{
+            const msg = document.querySelector(`[data-id="${data.id}"]`);
+
+            if(!msg) return;
+
+            const text = msg.querySelector(".text");
+
+            if(text){
+                text.innerText = data.message + " (edited)";
+            }
+        });
+
+        socket.on("message-deleted",(data)=>{
+            const msg = document.querySelector(`[data-id="${data.id}"]`);
+
+            if(!msg) return;
+
+            const text = msg.querySelector(".text");
+            const status = msg.querySelector(".status");
+
+            if(text){
+                text.innerText = "This message was deleted";
+            }
+
+            if(status){
+                status.innerText = "";
+            }
+        })
 
         socket.on("typing",(username)=>{
             // console.log("typing received from",username);
@@ -190,6 +261,23 @@
                     username
                 });
             }
+            //edit=> /edit 12(id) new-message-text
+            else if(message.startsWith("/edit")){
+                const parts=message.split(" ");
+                const id=parts[1];//mssg id number to be edited
+                const newMessage=parts.slice(2).join(" ");//join mssg after index 1=>
+                
+                socket.emit("edit-message",{
+                    messageId:id,
+                    newMessage
+                });
+            }
+            //delete=> /delete 12(id)
+            else if(message.startsWith("/delete")){
+                const id=message.split(" ")[1];
+                socket.emit("delete-message",id);
+            }
+            //normal chat
             else{
                 socket.emit("user-message",{
                     username,

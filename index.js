@@ -148,6 +148,39 @@ io.on("connection",(socket)=>{
             status: "delivered"
         });
     });
+    //Read event
+    socket.on("message-read",async(messageId)=>{
+        await pool.query(
+            "UPDATE messages SET read=true WHERE id=$1",
+            [messageId]
+        );
+        io.to(socket.room).emit("message-read-update",{
+            id: messageId
+        });
+    });
+    //edited event
+    socket.on("edit-message",async(data)=>{
+        const {messageId,newMessage}=data;
+
+        await pool.query(
+            "UPDATE messages SET message=$1, edited=true WHERE id=$2",
+            [newMessage,messageId]
+        );
+
+        io.to(socket.room).emit("message-edited",{
+            id:messageId,
+            message:newMessage
+        });
+    });
+    //deleted event
+    socket.on("delete-message",async(messageId)=>{
+        await pool.query(
+            "UPDATE messages SET deleted=true WHERE id=$1",[messageId]
+        );
+        io.to(socket.room).emit("message-deleted",{
+            id:messageId
+        });
+    });
 
     //TYPING
     socket.on("typing",(username)=>{
